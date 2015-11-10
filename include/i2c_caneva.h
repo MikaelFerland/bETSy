@@ -10,9 +10,10 @@
 
 #include <avr/interrupt.h>
 
-#define CIRCULAR_BUFFER_SIZE 70 //////MUST BE CHANGE VALUE TO 70 TO ALLOW COMPILATION
+#define CIRCULAR_BUFFER_SIZE 32 //////MUST BE CHANGE VALUE TO 70 TO ALLOW COMPILATION
 
 /** Prototype */
+void TWIInit(void);
 
 void putDataOutBuf(u08 data);
 u08 getDataOutBuf(void);
