@@ -1,6 +1,6 @@
 /*
     Title:    main.c
-    Authors:  Mikael Ferland, Joël Brisson
+    Authors:  Mikael Ferland, JoÃ«l Brisson
     Date:     09/2015
     Purpose:  Control a robot through UART and SPI
     needed
@@ -53,7 +53,8 @@ volatile s08 R_SIGN, L_SIGN;
 
 volatile u16 V_L_MOTOR_SENSOR_RAW, V_R_MOTOR_SENSOR_RAW;
 
-volatile long int V_L_MOTOR_SENSOR_ACCUMULATOR, V_R_MOTOR_SENSOR_ACCUMULATOR;
+volatile int V_L_MOTOR_SENSOR_ACCUMULATOR, V_R_MOTOR_SENSOR_ACCUMULATOR;
+
 volatile float V_L_MOTOR_SENSOR_MEAN, V_R_MOTOR_SENSOR_MEAN;
 volatile u16 L_COUNTER_FOR_MEAN, R_COUNTER_FOR_MEAN;
 
@@ -126,91 +127,93 @@ void delay(){
 	}
 }
 
+void waitForSample(){
+	while((L_COUNTER_FOR_MEAN < 12) && (R_COUNTER_FOR_MEAN < 12));
+}
+
+void resetMeanValue(){
+	V_L_MOTOR_SENSOR_ACCUMULATOR =0;
+	V_R_MOTOR_SENSOR_ACCUMULATOR =0;
+	V_L_MOTOR_SENSOR_MEAN = 0.0;
+	V_R_MOTOR_SENSOR_MEAN = 0.0;
+	L_COUNTER_FOR_MEAN =0;
+	R_COUNTER_FOR_MEAN =0;
+}
+
 void calibrate(){
 
 	//Vmax+ motors
 	stopRobot();
-
-
+	delay();
+	
 	PORTA |=  (1 << CALIB_PIN);
 	l_forward_motor();
 	r_forward_motor();
 	delay();
 
-	//while((L_COUNTER_FOR_MEAN < 1000) && (R_COUNTER_FOR_MEAN < 1000)){};
-	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((long int)L_COUNTER_FOR_MEAN));
-	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((long int)R_COUNTER_FOR_MEAN));
+	resetMeanValue();
+	waitForSample();
+
+	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((int)L_COUNTER_FOR_MEAN));
+	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((int)R_COUNTER_FOR_MEAN));
 	
 	L_VMAX_P = V_L_MOTOR_SENSOR_MEAN;
 	R_VMAX_P = V_R_MOTOR_SENSOR_MEAN;
 	PORTA &= ~(1 << CALIB_PIN);
 
-	V_L_MOTOR_SENSOR_ACCUMULATOR =0;
-	V_R_MOTOR_SENSOR_ACCUMULATOR =0;
-	V_L_MOTOR_SENSOR_MEAN = 0.0;
-	V_R_MOTOR_SENSOR_MEAN = 0.0;
-	L_COUNTER_FOR_MEAN =0;
-	R_COUNTER_FOR_MEAN =0;
+	
 
-	//Vmin+ motors
+	//Vzero+ motors
 	stopRobot();
 	delay();
 
-	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((long int)L_COUNTER_FOR_MEAN));
-	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((long int)R_COUNTER_FOR_MEAN));
+	resetMeanValue();
+	waitForSample();
+
+	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((int)L_COUNTER_FOR_MEAN));
+	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((int)R_COUNTER_FOR_MEAN));
 
 	L_VMIN_P = V_L_MOTOR_SENSOR_MEAN;
 	R_VMIN_P = V_R_MOTOR_SENSOR_MEAN;
-
-	V_L_MOTOR_SENSOR_ACCUMULATOR =0;
-	V_R_MOTOR_SENSOR_ACCUMULATOR =0;
-	V_L_MOTOR_SENSOR_MEAN = 0.0;
-	V_R_MOTOR_SENSOR_MEAN = 0.0;
-	L_COUNTER_FOR_MEAN =0;
-	R_COUNTER_FOR_MEAN =0;
 	
 	//Vmax- motors
 	stopRobot();
+	delay();
+
 	PORTA |=  (1 << CALIB_PIN);
 	l_reverse_motor();
 	r_reverse_motor();
 	delay();
 
-	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((long int)L_COUNTER_FOR_MEAN));
-	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((long int)R_COUNTER_FOR_MEAN));
+	resetMeanValue();
+	waitForSample();
+
+	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((int)L_COUNTER_FOR_MEAN));
+	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((int)R_COUNTER_FOR_MEAN));
 
 	L_VMAX_N = V_L_MOTOR_SENSOR_MEAN;
 	R_VMAX_N = V_R_MOTOR_SENSOR_MEAN;
 	PORTA &= ~(1 << CALIB_PIN);
 
-	V_L_MOTOR_SENSOR_ACCUMULATOR =0;
-	V_R_MOTOR_SENSOR_ACCUMULATOR =0;
-	V_L_MOTOR_SENSOR_MEAN = 0.0;
-	V_R_MOTOR_SENSOR_MEAN = 0.0;
-	L_COUNTER_FOR_MEAN =0;
-	R_COUNTER_FOR_MEAN =0;	
-
-	//Vmin- motors
+	//Vzero- motors
 	stopRobot();
 	delay();
+	
+	resetMeanValue();
+	waitForSample();
 
-	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((long int)L_COUNTER_FOR_MEAN));
-	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((long int)R_COUNTER_FOR_MEAN));
+	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((int)L_COUNTER_FOR_MEAN));
+	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((int)R_COUNTER_FOR_MEAN));
 	
 	L_VMIN_N = V_L_MOTOR_SENSOR_MEAN;
 	R_VMIN_N = V_R_MOTOR_SENSOR_MEAN;
-
-	V_L_MOTOR_SENSOR_ACCUMULATOR =0;
-	V_R_MOTOR_SENSOR_ACCUMULATOR =0;
-	V_L_MOTOR_SENSOR_MEAN = 0.0;
-	V_R_MOTOR_SENSOR_MEAN = 0.0;
-	L_COUNTER_FOR_MEAN =0;
-	R_COUNTER_FOR_MEAN =0;
 
 	L_slope_P = (1.0 / (L_VMAX_P - L_VMIN_P));
 	R_slope_P = (1.0 / (R_VMAX_P - R_VMIN_P));
 	L_slope_N = (1.0 / (L_VMAX_N - L_VMIN_N));
 	R_slope_N = (1.0 / (R_VMAX_N - R_VMIN_N));
+
+	resetMeanValue();
 }
 
 void toggleLED(u08 LED)
@@ -242,10 +245,10 @@ SIGNAL(SIG_ADC)
 			V_L_MOTOR_SENSOR_RAW =  ADC & (0x3FF); //10 bits mask
 
 			if (L_SIGN > 0){
-				V_L_MOTOR_SENSOR_ACCUMULATOR += ((long int)V_L_MOTOR_SENSOR_RAW);
+				V_L_MOTOR_SENSOR_ACCUMULATOR += ((int)V_L_MOTOR_SENSOR_RAW);
 			}
 			else{
-				V_L_MOTOR_SENSOR_ACCUMULATOR -= ((long int)V_L_MOTOR_SENSOR_RAW);
+				V_L_MOTOR_SENSOR_ACCUMULATOR -= ((int)V_L_MOTOR_SENSOR_RAW);
 			}
 			
 			L_COUNTER_FOR_MEAN++;
@@ -257,10 +260,10 @@ SIGNAL(SIG_ADC)
 			V_R_MOTOR_SENSOR_RAW =  ADC & (0x3FF); //10 bits mask
 
 			if(R_SIGN >0){
-				V_R_MOTOR_SENSOR_ACCUMULATOR += ((long int)V_R_MOTOR_SENSOR_RAW);
+				V_R_MOTOR_SENSOR_ACCUMULATOR += ((int)V_R_MOTOR_SENSOR_RAW);
 			}
 			else{
-				V_R_MOTOR_SENSOR_ACCUMULATOR -= ((long int)V_R_MOTOR_SENSOR_RAW);
+				V_R_MOTOR_SENSOR_ACCUMULATOR -= ((int)V_R_MOTOR_SENSOR_RAW);
 			}
 			
 			R_COUNTER_FOR_MEAN++;
@@ -270,7 +273,7 @@ SIGNAL(SIG_ADC)
 		CURRENT_CHANNEL = !(CURRENT_CHANNEL & 0x01);
 		ADMUX = CURRENT_CHANNEL;
 				
-		STAB = 15;
+		STAB = 3;
 		
 	}
 	else{
@@ -357,8 +360,9 @@ int main(void)
 
 			VITESSE_CONSIGNE = (0.01 * VITESSE_TELEGUIDAGE) -1.0;		
 			ANGLE_CONSIGNE	 = (2.0 * PI) * (ANGLE_TELEGUIDAGE / 180.0);
-
-			/*UART_DisableEcho();
+			
+			/*//Debug*********
+			UART_DisableEcho();
 			UART_SendByte(START_DEBUG);
 			UART_PrintfProgStr("Vitesse: ");
 			UART_Printfu08((u08) VITESSE_TELEGUIDAGE);
@@ -367,15 +371,16 @@ int main(void)
 			UART_Printfu08((u08) ANGLE_TELEGUIDAGE);
 			UART_PrintfProgStr(" ");					
 			UART_SendByte(STOP_DEBUG);
-			UART_EnableEcho();*/		
+			UART_EnableEcho();
+			//*****************/		
 			
 			PACKET_READY = 0;	
 		}
 		
 		if(TIME_TO_COMPUTE_PWM==1){			
 			
-			V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((long int)L_COUNTER_FOR_MEAN));
-			V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((long int)R_COUNTER_FOR_MEAN));	
+			V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((int)L_COUNTER_FOR_MEAN));
+			V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((int)R_COUNTER_FOR_MEAN));	
 			
 			if(V_L_MOTOR_SENSOR_MEAN > 0.0){
 				V_L_MOTOR_SENSOR_ENG = (V_L_MOTOR_SENSOR_MEAN - L_VMIN_P) * L_slope_P;	
@@ -390,85 +395,75 @@ int main(void)
 			else{	
 				V_R_MOTOR_SENSOR_ENG = (V_R_MOTOR_SENSOR_MEAN - R_VMIN_N ) * (-R_slope_N);
 			}
-			
-			/*l_forward_motor();
-			r_forward_motor();
-			OCR1B = 0x270F;
-			OCR1A = 0x270F;*/
 
 			CalculPWM(VITESSE_CONSIGNE, ANGLE_CONSIGNE, V_L_MOTOR_SENSOR_ENG, V_R_MOTOR_SENSOR_ENG, &DUTY_L, &DUTY_R);
 			
+			robotToNeutral();
 			if (0xF1 == GetCommandeTeleguidage()){
-				if(DUTY_L > 0.0){
-					l_forward_motor();
-					DUTY_L_REG = (u16) (9999.0 * DUTY_L);
-				}
-				else if(DUTY_L < 0.0){
-					l_reverse_motor();
-					DUTY_L_REG = (u16)(-1.0 * (9999.0 * DUTY_L) );
+				if((DUTY_L > 0.0)){
+					DUTY_L_REG = (u16)(9999.0 * DUTY_L);
 				}
 				else{
+					DUTY_L_REG = (u16)(-1.0 * (9999.0 * DUTY_L));
+				}
+				if((DUTY_R > 0.0)){
+					DUTY_R_REG = (u16)(9999.0 * DUTY_R);
+				}
+				else{
+					DUTY_R_REG = (u16)(-1.0 * (9999.0 * DUTY_R));
+				}
+
+				if (DUTY_L == 0.0){
 					l_motorToNeural();
-				}
-				if(DUTY_R > 0.0){
-					r_forward_motor();
-					DUTY_R_REG = (u16) (9999.0 * DUTY_R);
-				}
-				else if(DUTY_R < 0.0){
-					r_reverse_motor();
-					DUTY_R_REG = (u16)(-1.0 * (9999.0 * DUTY_R) );
+					OCR1B = 0;
 				}
 				else{
-					r_motorToNeural();
+					if(DUTY_L > 0.0){
+						l_forward_motor();
+					}
+					else if(DUTY_L < 0.0){
+						l_reverse_motor();
+					}
+
+
 				}
-			
+
+				if (DUTY_R == 0.0){
+					r_motorToNeural();
+					OCR1A = 0;
+				}
+				else{
+					if(DUTY_R > 0.0){
+						r_forward_motor();
+					}
+					else if(DUTY_R < 0.0){
+						r_reverse_motor();
+					}
+
+					
+				}
+
+				OCR1B = DUTY_L_REG;
+				OCR1A = DUTY_R_REG;
+
+				/*//Debug*********
+				UART_DisableEcho();
+				UART_SendByte(START_DEBUG);
+				UART_PrintfProgStr(" Counter: ");
+				UART_Printfu16(L_COUNTER_FOR_MEAN);
+				UART_SendByte(STOP_DEBUG);
+				UART_EnableEcho();
+				//***************/
+
+				resetMeanValue();
+						
 			}
 			else{
 				stopRobot();
+				OCR1B = 0;
+				OCR1A = 0;
 			}
 
-			/*
-			if (0xF1 == GetCommandeTeleguidage()){
-				if((DUTY_L > 0.0) && (DUTY_R > 0.0)){
-					l_forward_motor();
-					r_forward_motor();
-
-					DUTY_L_REG = (u16) (9999.0 * DUTY_L);
-					DUTY_R_REG = (u16) (9999.0 * DUTY_R);		
-				}
-				else if((DUTY_L < 0.0) && (DUTY_R < 0.0)){				
-					l_reverse_motor();
-					r_reverse_motor();
-
-					DUTY_L_REG = (u16)(-1.0 * (9999.0 * DUTY_L) );
-					DUTY_R_REG = (u16)( -1.0 * (9999.0 * DUTY_R) );			
-				}
-				else{
-					if((DUTY_L > 0.0) && (DUTY_R <= 0.0)){
-						l_forward_motor();
-						r_reverse_motor();
-						
-						DUTY_L_REG = (u16) (9999.0 * DUTY_L);				
-						DUTY_R_REG = (u16) (-1*  (9999.0 * DUTY_R));				
-					}
-					else if((DUTY_L <= 0.0) && (DUTY_R >= 0.0)){
-						l_reverse_motor();
-						r_forward_motor();
-						
-						DUTY_L_REG = (u16) (-1*  (9999.0 * DUTY_L));			
-						DUTY_R_REG = (u16) (9999.0 * DUTY_R);				
-					}
-					else{
-						robotToNeutral();
-					}		
-				}
-			}
-			else{
-				stopRobot();				
-			}*/
-
-			OCR1B = DUTY_L_REG;
-			OCR1A = DUTY_R_REG;
 
 			/*UART_DisableEcho();
 			UART_SendByte(START_DEBUG);
@@ -487,20 +482,6 @@ int main(void)
 			UART_Printfu16(DUTY_L_REG);
 			UART_PrintfProgStr(" DUTY_R: ");
 			UART_Printfu16(DUTY_R_REG);*/
-			
-			UART_DisableEcho();
-			UART_SendByte(START_DEBUG);
-			UART_PrintfProgStr(" Counter: ");
-			UART_Printfu16(L_COUNTER_FOR_MEAN);
-			UART_SendByte(STOP_DEBUG);
-			UART_EnableEcho();
-			
-			V_L_MOTOR_SENSOR_ACCUMULATOR = 0;
-			V_R_MOTOR_SENSOR_ACCUMULATOR = 0;
-			V_L_MOTOR_SENSOR_MEAN = 0.0;
-			V_R_MOTOR_SENSOR_MEAN = 0.0;
-			L_COUNTER_FOR_MEAN = 0;
-			R_COUNTER_FOR_MEAN = 0;
 			
 			TIME_TO_COMPUTE_PWM = 0;
 
@@ -523,5 +504,3 @@ int main(void)
 				
     }
 }
-
-
