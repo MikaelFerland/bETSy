@@ -6,8 +6,27 @@
 
 #include "../include/i2c_caneva.h"
 
+
+// Two Wire Interface
+void TWIInit()
+{
+	TWSR = 0;
+	TWBR = 0xC6;
+
+	//Enable Interrupt
+	TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
+	
+	//twiWrite(0xE0, 0x02, 0x1A);
+	//insert all stuff you want to write
+	//twiWrite(0xE2, 0x02, 0x2F);
+	twiWrite(0xE0, 0x02, 0x03);
+	twiWrite(0xE2, 0x02, 0x03);
+	TWCR |= (1<<TWSTA); // then start the TWI
+}
+
+
 /******************************************************************************
- * Insérer dans le buffer out
+ * InsÃ©rer dans le buffer out
  *****************************************************************************/
 void putDataOutBuf(u08 data){
 
@@ -31,7 +50,7 @@ u08 getDataOutBuf(void){
 
 
 /******************************************************************************
- * Insérer dans le buffer in
+ * InsÃ©rer dans le buffer in
  *****************************************************************************/
 void putDataInBuf(u08 * ptr){
 
@@ -55,14 +74,17 @@ u08 * getDataInBuf(void){
 
 
 /******************************************************************************
- * Écrire sur le bus twi
+ * Ã‰crire sur le bus twi
  *****************************************************************************/
 void twiWrite(u08 address, u08 registre, u08 data){
 		
 	cli();
 	/*
-		Insérer ici le code pour lancer une écriture dur le bus twi
+		InsÃ©rer ici le code pour lancer une Ã©criture dur le bus twi
 	*/
+	putDataOutBuf(address);
+	putDataOutBuf(registre);
+	putDataOutBuf(data);
 	sei();
 
 }
@@ -74,8 +96,11 @@ void twiRead(u08 address, u08 registre, u08 *ptr){
 
 	cli();
 	/*
-		Insérer ici le code pour lancer une écriture dur le bus twi
-	*/	
+		InsÃ©rer ici le code pour lancer une Ã©criture dur le bus twi
+	*/
+	putDataInBuf(&address);
+	putDataInBuf(&registre);
+	getDataInBuf();
 	sei();
 
 }
@@ -96,6 +121,9 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 				Si  nous avons un start ou un restart condition alors il faut envoyer l'addr 
 				qui est dans le buffer Out et Activer le bus sans start/stop 
 			*/
+			TWDR = getDataOutBuf();
+			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
+			TWCR |= (1<<TWINT);
 			
 			break;
 
@@ -104,27 +132,31 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 		case	0x30: /* Date Write NoAck */
 			
 			/* 
-				Si  nous avons un data ou une addr d'écrit sur le bus, ensuite il peut y avoir un autre data, 
+				Si  nous avons un data ou une addr d'Ã©crit sur le bus, ensuite il peut y avoir un autre data, 
 				un stop ou un restart. Il faut donc lire le buffer pour savoir quoi faire et configure 
-				le bus en conséquence 
+				le bus en consÃ©quence 
 			*/
-			
+			TWDR = getDataOutBuf();
+			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
+			TWCR |= (1<<TWINT);
 			break;
 
 		case	0x50: /* Data Read Ack */
 		case	0x58: /* Data Read NoAck */
 
 			/* 
-				Une lecture à été effectué sur le bus, il faut donc la récupérer 
+				Une lecture Ã  Ã©tÃ© effectuÃ© sur le bus, il faut donc la rÃ©cupÃ©rer 
 			*/
 
 		case	0x40: /* Address Read Ack */
 
 			/* 
 				Puisqu'il n'y a pas de break dans les deux case 0x50 et 0x58, quand nous sommes ici
-				nous avons soit lue la donnée ou envoyé l'addr à lire, il peut donc y avoir un stop, un
+				nous avons soit lue la donnÃ©e ou envoyÃ© l'addr Ã  lire, il peut donc y avoir un stop, un
 				start ou encore il faut placer le bus en mode lecture 
 			*/
+			TWCR = (1<<TWEN) |(1<<TWEA) | (1<<TWIE);
+			TWCR |= (1<<TWINT);
 	
 			break;
 
@@ -132,15 +164,17 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 		case	0x20: /* Address Write NoAck */
 
 			/* 
-				Ici l'un des deux sonars n'a pas répondu, il faut donc tout stoper ou faire un restart
-			    pour la prochaine trame qui peut être dans le buffer 
+				Ici l'un des deux sonars n'a pas rÃ©pondu, il faut donc tout stoper ou faire un restart
+			    pour la prochaine trame qui peut Ãªtre dans le buffer 
 			*/
-			
+			TWCR =	(1<<TWEN) | (1<<TWSTO);
+			TWCR |= (1<<TWINT);
+
 			break;
 
 		default : 
 			/*
-				Cette partie de code ne devrait pas être utile :)
+				Cette partie de code ne devrait pas Ãªtre utile :)
 			*/
 			break;
 	}
