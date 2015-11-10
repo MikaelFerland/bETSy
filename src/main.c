@@ -16,6 +16,7 @@
 #include "../include/timer.h"
 #include "../include/moteur.h"
 #include "../include/adc.h"
+#include "../include/i2c_caneva.h"
 
 /* General librairies ---------------------------------------- */
 #include <avr/pgmspace.h>
@@ -38,16 +39,25 @@
 #define VITESSE_TELEGUIDAGE_MAX 0xC8
 #define CALIB_PIN		PINA4
 
+/* LED-------------------------------------------------------- */
+#define Command_LED 	1
+#define RObstacle_LED 	2
+#define RSonar_LED 		3
+#define LObstacle_LED	4
+#define LSonar_LED 		5
+#define WAIT_LED 		6
+#define RUN_LED 		7
+
+
 /* Macro------------------------------------------------------ */
 #define PRINT_DEBUG(string) print((PGM_P) string)
 
 /*Global Variables ------------------------------------------- */
 volatile u08 TIME_TO_COMPUTE_PWM;
 volatile u08 CURRENT_CHANNEL;
-
 volatile u08 G_DIR_SENSOR, D_DIR_SENSOR;
-
 volatile u08 STAB;
+volatile u08 LED_Status = 0x00, OLD_LED_Status = 0x00, LED_Counter = 0x00;
 
 volatile s08 R_SIGN, L_SIGN;
 
@@ -216,17 +226,35 @@ void calibrate(){
 	resetMeanValue();
 }
 
-void toggleLED(u08 LED)
+void UpdateLED()
 {
-	u08 i = 0,pin = 0x01;
-
-	for(i=0;i<LED;i++)
+	// when a flashing led has his status bit set to '1',
+	// toggle the LED output then put his status to '0'
+	if((LED_Status & 0x02))
 	{
-		pin = pin << 1;
+		//toggle PIN State
+		PORTB = (PORTB ^ 0x02);
 	}
 
-	// GOOD LUCK 
-	PORTB = (PORTB ^ pin);
+	if((LED_Status & 0x08))
+	{
+		//toggle PIN State
+		PORTB = (PORTB ^ 0x08);
+	}
+
+	if((LED_Status & 0x20))
+	{
+		//toggle PIN State
+		PORTB = (PORTB ^ 0x20);
+	}
+
+
+	// Mask all LED that does not flash
+	// then write them to the LED PORT
+	PORTB = (0xD4 | PORTB) & ~(0xD4 & LED_Status);
+
+	LED_Status = LED_Status & 0xD4;
+	OLD_LED_Status = LED_Status;
 }
 
 //Timer 1 flag
@@ -319,6 +347,7 @@ int main(void)
 	
 	calibrate();
 
+	//TWIInit();
 	UART_Init();
 
 	UART_DisableEcho();	
@@ -346,10 +375,12 @@ int main(void)
 	/* Wait for Switch to be press before robot start moving*/
 	while(PINA & 0x40) // Wait for SW6 to be press
 	{
-		//PORTB = (PORTB ^ 0x40); // turn on LED 6
-		PORTB &= ~(1<<6);
+		//PORTB &= ~(1<<WAIT_LED); // set on WAIT_LED
+		LED_Status |= (1<<WAIT_LED);
+		UpdateLED();
 	}
-	PORTB |= (1<<6); // set LED 6 off
+	LED_Status |= (1<<RUN_LED);
+	LED_Status &= ~(1<<WAIT_LED);
 	
     for (;;) {  /* loop forever */
 		if(PACKET_READY == 1){
@@ -372,9 +403,11 @@ int main(void)
 			UART_PrintfProgStr(" ");					
 			UART_SendByte(STOP_DEBUG);
 			UART_EnableEcho();
-			//*****************/		
+			*/	
 			
-			PACKET_READY = 0;	
+			PACKET_READY = 0;
+			//Update LED value
+			LED_Status |= 0x02;	
 		}
 		
 		if(TIME_TO_COMPUTE_PWM==1){			
@@ -399,6 +432,7 @@ int main(void)
 			CalculPWM(VITESSE_CONSIGNE, ANGLE_CONSIGNE, V_L_MOTOR_SENSOR_ENG, V_R_MOTOR_SENSOR_ENG, &DUTY_L, &DUTY_R);
 			
 			robotToNeutral();
+
 			if (0xF1 == GetCommandeTeleguidage()){
 				if((DUTY_L > 0.0)){
 					DUTY_L_REG = (u16)(9999.0 * DUTY_L);
@@ -453,11 +487,12 @@ int main(void)
 				UART_Printfu16(L_COUNTER_FOR_MEAN);
 				UART_SendByte(STOP_DEBUG);
 				UART_EnableEcho();
-				//***************/
+				*/
 
 				resetMeanValue();
 						
 			}
+
 			else{
 				stopRobot();
 				OCR1B = 0;
@@ -483,23 +518,36 @@ int main(void)
 			UART_PrintfProgStr(" DUTY_R: ");
 			UART_Printfu16(DUTY_R_REG);*/
 			
-			TIME_TO_COMPUTE_PWM = 0;
+			TIME_TO_COMPUTE_PWM = 0;			
 
-			toggleLED(0x07);			
+		}
 
-			// if SW7 is press, stop all motor and wait for SW6
-			if(!(PINA & 0x80)){
-				//stop all motor
-				stopRobot();
-				//PORTB = (PORTB | 0x40) & 0x7F; // turn on LED 6 and LED 7 off
-				PORTB &= ~(1 << 6);
-				PORTB |= (1 << 7);
-				while(PINA & 0x40);
-				
-				//PORTB = PORTB & 0xBF; // turn off LED 6
-				PORTB |= (1 << 6);
+		//if LED value has change, update LED PORT
+		if(OLD_LED_Status != LED_Status)
+		{
+			UpdateLED();
+		}
 
-			}
+		// if SW7 is press, stop all motor and wait for SW6
+		if(!(PINA & 0x80)){
+			//stop all motor
+			stopRobot();
+			/*//PORTB = (PORTB | 0x40) & 0x7F; // turn on LED 6 and LED 7 off
+			PORTB &= ~(1 << 6);
+			PORTB |= (1 << 7);
+			*/
+		
+			LED_Status &= ~(1 << RUN_LED);
+			while(PINA & 0x40)
+				{	
+					LED_Status |= (1<<WAIT_LED);
+					UpdateLED();
+				}
+			
+			//PORTB = PORTB & 0xBF; // turn off LED 6
+			//PORTB |= (1 << 6);
+			LED_Status |= (1<<RUN_LED);	
+			LED_Status &= ~(1 << WAIT_LED);
 		}
 				
     }
