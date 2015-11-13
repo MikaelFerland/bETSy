@@ -68,6 +68,10 @@ volatile int V_L_MOTOR_SENSOR_ACCUMULATOR, V_R_MOTOR_SENSOR_ACCUMULATOR;
 volatile float V_L_MOTOR_SENSOR_MEAN, V_R_MOTOR_SENSOR_MEAN;
 volatile u16 L_COUNTER_FOR_MEAN, R_COUNTER_FOR_MEAN;
 
+volatile u08 Ping_Side = 0;
+volatile u08 Ping_Sensor_MSB, Ping_Sensor_LSB;
+volatile u16 R_Ping_Sense, L_Ping_Sense;
+volatile u08 Time_To_Ping = 0;
 
 float   VITESSE_TELEGUIDAGE, ANGLE_TELEGUIDAGE;
 float	VITESSE_CONSIGNE, ANGLE_CONSIGNE;
@@ -257,10 +261,24 @@ void UpdateLED()
 	OLD_LED_Status = LED_Status;
 }
 
+//Speed command must be between -1 and 1
+//Return 33 to 68 for speed_command > 0
+u08 SetSonarRange(float speed_command){	
+	return  (0 <= speed_command) ? (u08)(( (68.7274-33.8837) * speed_command) + 33.8837) : 0;
+}
+
+//Convert speed command into a gain in range of 8 to 12
+//Speed command must be between -1 and 1
+//Return 8 to 12 for speed_command > 0
+u08 SetSonarGain(float speed_command){
+	return  (0 <= speed_command) ? (u08)((4.0 * speed_command) + 8.0) : 0;
+}
+
 //Timer 1 flag
 SIGNAL(SIG_OVERFLOW1)
 {
 	TIME_TO_COMPUTE_PWM = 1;
+	Time_To_Ping++;
 }
 
 SIGNAL(SIG_ADC)
@@ -347,7 +365,7 @@ int main(void)
 	
 	calibrate();
 
-	//TWIInit();
+	TWIInit();
 	UART_Init();
 
 	UART_DisableEcho();	
@@ -408,6 +426,53 @@ int main(void)
 			PACKET_READY = 0;
 			//Update LED value
 			LED_Status |= 0x02;	
+		}
+		
+		if(Time_To_Ping >= 10)
+		{
+			if(Ping_Side == 0)//Store value of Left Ping Sense, Read value of Right Ping Sensor, Ping on Left Sensor
+			{
+				L_Ping_Sense = (Ping_Sensor_MSB << 8) + Ping_Sensor_LSB; //Store Value of Ping Sense
+				if(L_Ping_Sense != 0x0FFF)		// If obstacle detected, update coresponding LED
+					LED_Status |= (1<<LObstacle_LED); 
+				else
+					LED_Status &= ~(1 << LObstacle_LED);
+
+				twiWrite(0xE0, 0x02, SetSonarRange(VITESSE_CONSIGNE)); //Set Sonar Range depending on speed
+				putDataOutBuf(0xFE);
+				twiRead(0xE2, 0x02, &Ping_Sensor_MSB);		//Read data from the Ping Sensor
+				putDataOutBuf(0xFE);
+				twiRead(0xE2, 0x03, &Ping_Sensor_LSB);
+				putDataOutBuf(0xFE);
+				twiWrite(0xE0, 0x00, 0x51); 		//Send the Ping Command
+				putDataOutBuf(0xFF);
+				TWCR |= (1<<TWSTA); 			//start TWi transmition
+				LED_Status |= (1 << LSonar_LED); //toggle the Ping LED
+
+				Ping_Side = 1;
+			}
+			else // Store value of Right Ping Sense, Read value of Left Ping Sensor, Ping on right Sensor
+			{
+				R_Ping_Sense = (Ping_Sensor_MSB << 8) + Ping_Sensor_LSB; // Store Value of Pin Sense
+				if(R_Ping_Sense != 0x0FFF)		// If obstacle detected, update coresponding LED
+					LED_Status |= (1<<RObstacle_LED);
+				else
+					LED_Status &= ~(1 << RObstacle_LED);
+				
+				twiWrite(0xE2, 0x02, SetSonarRange(VITESSE_CONSIGNE)); //Set Sonar Range depending on speed
+				putDataOutBuf(0xFE);
+				twiRead(0xE0, 0x02, &Ping_Sensor_MSB);		//Read data from the Ping Sensor of the other side
+				putDataOutBuf(0xFE);
+				twiRead(0xE0, 0x03, &Ping_Sensor_LSB);
+				putDataOutBuf(0xFE);
+				twiWrite(0xE2, 0x00, 0x51);		//Send the Ping Command
+				putDataOutBuf(0xFF);
+				TWCR |= (1<<TWSTA);				//start TWi transmition
+				LED_Status |= (1 << RSonar_LED); //toggle the Ping LED
+
+				Ping_Side = 0;
+			}
+			Time_To_Ping = 0; // reset the Time_To_Ping value
 		}
 		
 		if(TIME_TO_COMPUTE_PWM==1){			
