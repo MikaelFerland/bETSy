@@ -6,6 +6,8 @@
 
 #include "../include/i2c_caneva.h"
 
+u08 buffer;
+u08 *buffer_ptr;
 
 // Two Wire Interface
 void TWIInit()
@@ -16,11 +18,16 @@ void TWIInit()
 	//Enable Interrupt
 	TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
 	
-	//twiWrite(0xE0, 0x02, 0x1A);
-	//insert all stuff you want to write
-	//twiWrite(0xE2, 0x02, 0x2F);
-	twiWrite(0xE0, 0x02, 0x03);
-	twiWrite(0xE2, 0x02, 0x03);
+	//Set some initial value to both ping sensor
+	twiWrite(0xE0, 0x02, 0x5A);
+	putDataOutBuf(0xFE);//Send restart
+	twiWrite(0xE2, 0x02, 0x5A);
+	putDataOutBuf(0xFE);
+	twiWrite(0xE0, 0x01, 0x0A);
+	putDataOutBuf(0xFE);
+	twiWrite(0xE0, 0x01, 0x0A);
+	putDataOutBuf(0xFF);//Send stop
+	
 	TWCR |= (1<<TWSTA); // then start the TWI
 }
 
@@ -79,9 +86,6 @@ u08 * getDataInBuf(void){
 void twiWrite(u08 address, u08 registre, u08 data){
 		
 	cli();
-	/*
-		Insérer ici le code pour lancer une écriture dur le bus twi
-	*/
 	putDataOutBuf(address);
 	putDataOutBuf(registre);
 	putDataOutBuf(data);
@@ -95,12 +99,11 @@ void twiWrite(u08 address, u08 registre, u08 data){
 void twiRead(u08 address, u08 registre, u08 *ptr){
 
 	cli();
-	/*
-		Insérer ici le code pour lancer une écriture dur le bus twi
-	*/
-	putDataInBuf(&address);
-	putDataInBuf(&registre);
-	getDataInBuf();
+	putDataOutBuf(address);
+	putDataOutBuf(registre);
+	putDataOutBuf(0xFE);
+	putDataOutBuf(address+1);
+	putDataInBuf(ptr);
 	sei();
 
 }
@@ -136,9 +139,21 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 				un stop ou un restart. Il faut donc lire le buffer pour savoir quoi faire et configure 
 				le bus en conséquence 
 			*/
-			TWDR = getDataOutBuf();
+			buffer = getDataOutBuf();
 			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
-			TWCR |= (1<<TWINT);
+			if(buffer = 0xFF)
+			{
+				TWCR |= (1<<TWSTO);
+			}
+			else if(buffer == 0xFE)
+			{
+				TWCR |= (1<<TWSTA);
+			}
+			else
+			{
+				TWDR = buffer;
+				TWCR |= (1<<TWINT);
+			}
 			break;
 
 		case	0x50: /* Data Read Ack */
@@ -147,6 +162,26 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 			/* 
 				Une lecture à été effectué sur le bus, il faut donc la récupérer 
 			*/
+			buffer = getDataInBuf();
+
+			*buffer = TWDR;
+			
+			buffer = getDataOutBuf();
+			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
+			if(buffer == 0xFF)
+			{
+				TWCR |= (1<<TWSTO);
+			}
+			else if(buffer == 0xFE)
+			{
+				TWCR |= (1<<TWSTA);
+			}
+			else
+			{
+				TWDR = buffer;
+				TWCR |= (1<<TWINT);
+			}
+			break; // Added this break to hendel stop condition
 
 		case	0x40: /* Address Read Ack */
 
@@ -155,7 +190,7 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 				nous avons soit lue la donnée ou envoyé l'addr à lire, il peut donc y avoir un stop, un
 				start ou encore il faut placer le bus en mode lecture 
 			*/
-			TWCR = (1<<TWEN) |(1<<TWEA) | (1<<TWIE);
+			TWCR = (1<<TWEN) | (1<<TWIE);
 			TWCR |= (1<<TWINT);
 	
 			break;
