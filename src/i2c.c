@@ -178,9 +178,10 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 			
 			buffer_ptr = getDataInBuf();	//get Data from the circular buffer
 
-			*buffer_ptr = TWDR;		//Write the value found in "TWDR" at the address of "buffer"
+			*buffer_ptr = TWDR;			//Write the value found in "TWDR" at the address of "buffer"
 			
 			buffer = getDataOutBuf();	//Read next value in the circular buffer
+
 			//Reset TWI flag, Enable TWI, Enable TWI Acknoledge, Enable TWI Interrupt
 			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
 			if(buffer == 0xFF)		// 0xFF will stop TWI
