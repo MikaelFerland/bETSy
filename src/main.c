@@ -1,7 +1,7 @@
 /*
     Title:    main.c
     Authors:  Mikael Ferland, Joël Brisson
-    Date:     09/2015
+    Date:     11/2015
     Purpose:  Control a robot through UART and SPI
     needed
     Software: AVR-GCC to compile
