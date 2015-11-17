@@ -1,8 +1,12 @@
-/******************************************************************************
- *
- *
- *****************************************************************************/
-
+/*
+    Title:    i2c.h
+    Authors:  Mikael Ferland, Joël Brisson
+    Date:     11/2015
+    Purpose:  Header for i2c.c
+    Software: AVR-GCC to compile
+    Hardware: ATMega32 on STK500 board
+    Note:     
+*/
 #ifndef I2C_H
 #define I2C_H
 
@@ -10,9 +14,9 @@
 
 #include <avr/interrupt.h>
 
-#define CIRCULAR_BUFFER_SIZE 32 //////MUST BE CHANGE VALUE TO 70 TO ALLOW COMPILATION
+#define CIRCULAR_BUFFER_SIZE 32
 
-/** Prototype */
+/* Initialysation for the Two Wire Interface */
 void TWIInit(void);
 
 void putDataOutBuf(u08 data);
@@ -23,7 +27,7 @@ u08 * getDataInBuf(void);
 void twiWrite(u08 address, u08 registre, u08 data);
 void twiRead(u08 address, u08 registre, u08 *ptr);
 
-/** Les variables */
+/* The variables */
 u08 CircularBufferOut[CIRCULAR_BUFFER_SIZE];
 u08 * CircularBufferIn[CIRCULAR_BUFFER_SIZE];
 
