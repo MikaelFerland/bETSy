@@ -16,7 +16,7 @@
 #include "../include/timer.h"
 #include "../include/moteur.h"
 #include "../include/adc.h"
-#include "../include/i2c_caneva.h"
+#include "../include/i2c.h"
 
 /* General librairies ---------------------------------------- */
 #include <avr/pgmspace.h>
