@@ -27,9 +27,9 @@
 #define UART_BAUD_SELECT       (UART_CPU/(UART_BAUD_RATE*16l)-1)
 
 /* States use by Rx interop to set each byte of data properly */
-#define ATTENTE_COMMANDE	   0
-#define ATTENTE_VITESSE		   1
-#define ATTENTE_ANGLE		   2
+#define WAIT_COMMAND	   0
+#define WAIT_SPEED		   1
+#define WAIT_ANGLE		   2
 
 /* Global functions */
 extern void  UART_SendByte         (u08 Data);
@@ -42,9 +42,9 @@ extern void  UART_Init             (void);
 
 extern void  UART_DisableEcho	   (void);
 extern void  UART_EnableEcho	   (void);
-extern u08	 GetCommandeTeleguidage(void);
-extern float GetVitesseTeleguidage (void);
-extern float GetAngleTeleguidage   (void);
+extern u08	 GetCommandRemote      (void);
+extern float GetSpeedRemote        (void);
+extern float GetAngleRemote        (void);
 
 
 /* Shared variable */
