@@ -156,7 +156,7 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
 			
 			// if start or restart condition is read on the bus
-			if(buffer = 0xFF) 	// 0xFF will stop TWI
+			if(buffer == 0xFF) 	// 0xFF will stop TWI
 			{
 				TWCR |= (1<<TWSTO);
 			}
