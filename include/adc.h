@@ -1,5 +1,5 @@
 /*
-    Title:    adc.c
+    Title:    adc.h
     Authors:  Mikael Ferland, Joël Brisson
     Date:     07/10/2015
     Purpose:  Header for adc.c
