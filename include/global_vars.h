@@ -1,8 +1,8 @@
 /*
-    Title:    main.c
+    Title:    global_vars.h
     Authors:  Mikael Ferland, Joël Brisson
     Date:     XX/09/2015
-    Purpose:  Contains definitions to be done in all 
+    Purpose:  Contains definitions to be use in all *.c files. 
     Software: AVR-GCC to compile
     Hardware: ATMega32 on STK500 board
     Note:     
