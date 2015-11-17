@@ -1,3 +1,13 @@
+/*
+    Title:    adc.c
+    Authors:  Mikael Ferland, Joël Brisson
+    Date:     24/10/2015
+    Purpose:  Initialysation the Analogue to Digital Converter.
+    Software: AVR-GCC to compile
+    Hardware: ATMega32 on STK500 board
+    Note:
+*/
+
 #include "adc.h"
 
 void ADC_Init(void)
