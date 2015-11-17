@@ -88,6 +88,8 @@ u16   DUTY_L_REG, DUTY_R_REG;
 u16	  TT;
 
 /* Functions ------------------------------------------------- */
+
+//Print information on the remote consol
 void print(PGM_P string){
 		UART_DisableEcho();
 		UART_SendByte(START_DEBUG);
@@ -96,36 +98,53 @@ void print(PGM_P string){
 		UART_EnableEcho();
 }
 
+//Set left motor to neutral
 void l_motorToNeural(){
 	PORTD &= ~( (1 << SET_DIR_L1) | (1 << SET_DIR_L2) );
 }
+
+//Set right motor to neutral
 void r_motorToNeural(){
 	PORTD &= ~( (1 << SET_DIR_R1) | (1 << SET_DIR_R2) );
 }
+
+//Set all motor to neutral
 void robotToNeutral(){
 	PORTD &= ~( (1 << SET_DIR_L1) | (1 << SET_DIR_L2) | (1 << SET_DIR_R1) | (1 << SET_DIR_R2) );
 }
+
+//Set left motor to forward
 void l_forward_motor(){
 	PORTD |=  (1 << SET_DIR_L1);
 	PORTD &= ~(1 << SET_DIR_L2);
 }
+
+//Set right motor to forward
 void r_forward_motor(){
 	PORTD |=  (1 << SET_DIR_R1);
 	PORTD &= ~(1 << SET_DIR_R2);
 }
+
+//Set left motor to reverse
 void l_reverse_motor(){
 	PORTD &= ~(1 << SET_DIR_L1);
 	PORTD |=  (1 << SET_DIR_L2);
 }
+
+//Set right motor to reverse
 void r_reverse_motor(){
 	PORTD &= ~(1 << SET_DIR_R1);
 	PORTD |=  (1 << SET_DIR_R2);
 }
+
+//Set all motor to stop
 void stopRobot(){
 	OCR1A = 0;
 	OCR1B = 0;
 	PORTD |= ( (1 << SET_DIR_L1) | (1 << SET_DIR_L2) | (1 << SET_DIR_R1) | (1 << SET_DIR_R2) );
 }
+
+//Simple short delay of 1.5mS
 void delay(){
 	u16 count = 1000;
 	u16 count1 = 25;
@@ -139,10 +158,12 @@ void delay(){
 	}
 }
 
+//Wait for 11 ADC Sample on both motor side
 void waitForSample(){
 	while((L_COUNTER_FOR_MEAN < 12) && (R_COUNTER_FOR_MEAN < 12));
 }
 
+//Reset all value use for Mean
 void resetMeanValue(){
 	V_L_MOTOR_SENSOR_ACCUMULATOR =0;
 	V_R_MOTOR_SENSOR_ACCUMULATOR =0;
@@ -152,6 +173,7 @@ void resetMeanValue(){
 	R_COUNTER_FOR_MEAN =0;
 }
 
+//Calibration of max, neutral and min value for the right and left motor
 void calibrate(){
 
 	//Vmax+ motors
@@ -166,6 +188,7 @@ void calibrate(){
 	resetMeanValue();
 	waitForSample();
 
+	//Calculate mean value
 	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((int)L_COUNTER_FOR_MEAN));
 	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((int)R_COUNTER_FOR_MEAN));
 	
@@ -180,6 +203,7 @@ void calibrate(){
 	resetMeanValue();
 	waitForSample();
 
+	//Calculate mean value
 	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((int)L_COUNTER_FOR_MEAN));
 	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((int)R_COUNTER_FOR_MEAN));
 
@@ -198,6 +222,7 @@ void calibrate(){
 	resetMeanValue();
 	waitForSample();
 
+	//Calculate mean value
 	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((int)L_COUNTER_FOR_MEAN));
 	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((int)R_COUNTER_FOR_MEAN));
 
@@ -212,6 +237,7 @@ void calibrate(){
 	resetMeanValue();
 	waitForSample();
 
+	//Calculate mean value
 	V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((int)L_COUNTER_FOR_MEAN));
 	V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((int)R_COUNTER_FOR_MEAN));
 	
@@ -226,6 +252,7 @@ void calibrate(){
 	resetMeanValue();
 }
 
+//Update the LED state
 void UpdateLED()
 {
 	// when a flashing led has his status bit set to '1',
@@ -269,13 +296,14 @@ u08 SetSonarGain(float speed_command){
 	return  (0 <= speed_command) ? (u08)((4.0 * speed_command) + 8.0) : 0;
 }
 
-//Timer 1 flag
+//Interrupt for: Timer 1 flag
 SIGNAL(SIG_OVERFLOW1)
 {
 	TIME_TO_COMPUTE_PWM = 1;
 	Time_To_Ping++;
 }
 
+//Interrupt for: End of ADC conversion
 SIGNAL(SIG_ADC)
 {
 	if (STAB == 0){
@@ -337,13 +365,7 @@ int main(void)
 	
 	PORTB=0xFF;
 
-	V_L_MOTOR_SENSOR_ACCUMULATOR =0;
-	V_R_MOTOR_SENSOR_ACCUMULATOR =0;
-	V_L_MOTOR_SENSOR_MEAN = 0.0;
-	V_R_MOTOR_SENSOR_MEAN = 0.0;
-	L_COUNTER_FOR_MEAN = 0;
-	R_COUNTER_FOR_MEAN = 0;
-
+	resetMeanValue();
 	
 	TIME_TO_COMPUTE_PWM = 0;
 	CURRENT_CHANNEL = 0;
@@ -355,7 +377,8 @@ int main(void)
 	/* Initialisation */
 	ADC_Init();
 	timer_Init();
-			
+	
+	//Enable Interrupt		
 	sei();
 	
 	calibrate();
@@ -363,6 +386,7 @@ int main(void)
 	TWIInit();
 	UART_Init();
 
+	//Print on Remote console Calibration values
 	UART_DisableEcho();	
 	UART_SendByte(START_DEBUG);
 	UART_PrintfProgStr("Calibration done! ");
@@ -396,6 +420,7 @@ int main(void)
 	LED_Status &= ~(1<<WAIT_LED);
 	
     for (;;) {  /* loop forever */
+    		//Once receive all information commands from Remote
 		if(PACKET_READY == 1){
 			wdt_reset();
 			SPEED_REMOTE = GetSpeedRemote();
@@ -410,6 +435,7 @@ int main(void)
 			LED_Status |= 0x02;	
 		}
 		
+		//When its time to send a Sonar ping
 		if(Time_To_Ping >= 10)
 		{
 			if(Ping_Side == 0)//Store value of Left Ping Sense, Read value of Right Ping Sensor, Ping on Left Sensor
@@ -420,7 +446,7 @@ int main(void)
 				else
 					LED_Status &= ~(1 << LObstacle_LED);
 
-				twiWrite(0xE0, 0x02, SetSonarRange(VITESSE_SETPOINT)); //Set Sonar Range depending on speed
+				twiWrite(0xE0, 0x02, SetSonarRange(SPEED_SETPOINT)); //Set Sonar Range depending on speed
 				putDataOutBuf(0xFE);
 				twiRead(0xE2, 0x02, &Ping_Sensor_MSB);		//Read data from the Ping Sensor
 				putDataOutBuf(0xFE);
@@ -441,7 +467,7 @@ int main(void)
 				else
 					LED_Status &= ~(1 << RObstacle_LED);
 				
-				twiWrite(0xE2, 0x02, SetSonarRange(VITESSE_SETPOINT)); //Set Sonar Range depending on speed
+				twiWrite(0xE2, 0x02, SetSonarRange(SPEED_SETPOINT)); //Set Sonar Range depending on speed
 				putDataOutBuf(0xFE);
 				twiRead(0xE0, 0x02, &Ping_Sensor_MSB);		//Read data from the Ping Sensor of the other side
 				putDataOutBuf(0xFE);
@@ -457,18 +483,21 @@ int main(void)
 			Time_To_Ping = 0; // reset the Time_To_Ping value
 		}
 		
+		//at every 5ms
 		if(TIME_TO_COMPUTE_PWM==1){			
 			
+			//Calculate mean
 			V_L_MOTOR_SENSOR_MEAN = (float)(V_L_MOTOR_SENSOR_ACCUMULATOR / ((int)L_COUNTER_FOR_MEAN));
 			V_R_MOTOR_SENSOR_MEAN = (float)(V_R_MOTOR_SENSOR_ACCUMULATOR / ((int)R_COUNTER_FOR_MEAN));	
 			
+			//Verify for direction
 			if(V_L_MOTOR_SENSOR_MEAN > 0.0){
 				V_L_MOTOR_SENSOR_ENG = (V_L_MOTOR_SENSOR_MEAN - L_VMIN_P) * L_slope_P;	
 			}
 			else{
 				V_L_MOTOR_SENSOR_ENG = (V_L_MOTOR_SENSOR_MEAN - L_VMIN_N) * (-L_slope_N);
 			}
-
+			
 			if(V_R_MOTOR_SENSOR_MEAN > 0.0){
 				V_R_MOTOR_SENSOR_ENG = (V_R_MOTOR_SENSOR_MEAN - R_VMIN_P) * R_slope_P;
 			}
