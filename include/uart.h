@@ -1,6 +1,17 @@
+/*
+    Title:    uart.h
+    Authors:  Mikael Ferland, Joël Brisson
+    Date:     xx/09/2015
+    Purpose:  Header for uart.c
+    Software: AVR-GCC to compile
+    Hardware: ATMega32 on STK500 board
+    Note:     
+*/
+
 #ifndef __UART_H__
 #define __UART_H__
 
+/* Header to get global typedef */
 #include "../include/global_vars.h"
 
 #include <avr/io.h>
@@ -15,6 +26,7 @@
 #define UART_BAUD_RATE         9600         /* baud rate*/
 #define UART_BAUD_SELECT       (UART_CPU/(UART_BAUD_RATE*16l)-1)
 
+/* States use by Rx interop to set each byte of data properly */
 #define ATTENTE_COMMANDE	   0
 #define ATTENTE_VITESSE		   1
 #define ATTENTE_ANGLE		   2
