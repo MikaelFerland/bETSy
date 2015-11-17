@@ -66,8 +66,8 @@ SIGNAL(SIG_UART_RECV)
 		COMMAND = UART_RxChar;
 		STATE = WAIT_SPEED;
 	}
-	else if (STATE == WAIT_VITESSE){
-		VITESSE = UART_RxChar;
+	else if (STATE == WAIT_SPEED){
+		SPEED = UART_RxChar;
 		STATE = WAIT_ANGLE;
 	}
 	else if (STATE == WAIT_ANGLE){
