@@ -1,8 +1,11 @@
-/**
-	@file moteur.h
-	@brief Header pour le fichier moteur.c
-	@author Bruno De Kelper et Louis-Bernard Lagueux
-	@date 13 Octobre 2006
+/*
+    Title:    moteur.h
+    Authors:  Bruno De Kelper et Louis-Bernard Lagueux
+    Date:     13 Octobre 2006
+    Purpose:  Header for moteur.c
+    Software: AVR-GCC to compile
+    Hardware: ATMega32 on STK500 board
+    Note: already done for students     
 */
 #ifndef __MOTOR_H_
 #define __MOTOR_H_
