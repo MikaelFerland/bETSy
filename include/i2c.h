@@ -16,7 +16,7 @@
 
 #define CIRCULAR_BUFFER_SIZE 32
 
-/* Initialysation for the Two Wire Interface */
+/* Initialisation for the Two Wire Interface */
 void TWIInit(void);
 
 void putDataOutBuf(u08 data);
