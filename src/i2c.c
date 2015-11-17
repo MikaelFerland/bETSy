@@ -176,9 +176,9 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 		case	0x58: 	/* Data Read NoAck */
 
 			
-			buffer = getDataInBuf();	//get Data from the circular buffer
+			buffer_ptr = getDataInBuf();	//get Data from the circular buffer
 
-			*buffer = TWDR;			//Write the value found in "TWDR" at the address of "buffer"
+			*buffer_ptr = TWDR;		//Write the value found in "TWDR" at the address of "buffer"
 			
 			buffer = getDataOutBuf();	//Read next value in the circular buffer
 			//Reset TWI flag, Enable TWI, Enable TWI Acknoledge, Enable TWI Interrupt
