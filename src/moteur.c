@@ -1,13 +1,30 @@
+/*
+    Title:    moteur.c
+    Authors:  Bruno De Kelper et Louis-Bernard Lagueux
+    Date:     13 Octobre 2006
+    Purpose:  Function to calculate a duty cycle for a left and a right motor
+    Software: AVR-GCC to compile
+    Hardware: ATMega32 on STK500 board
+    Note:     already done for students     
+*/
+
 #include "moteur.h"
 
-
+//This function calculate a duty cycle for a left and a right motor
+//Params contraints:
+// 	-1.0  Vitesse_D  1.0   From "TÃ©lÃ©guidage"
+//	 0.0  Angle_D	  2pi  From "TÃ©lÃ©guidage"
+//	-1.0  Vg         1.0	 From adc signal provided by left motor
+//	-1.0  Vd 	  1.0   From adc signal provided by right motor
+//	-1.0  *Duty_G 	  1.0   For  PWM, it controls left motor 
+//	-1.0  *Duty_D 	  1.0   For  PWM, it controls right motor
 void CalculPWM(float Vitesse_D, float Angle_D, float Vg, float Vd, float *Duty_G, float *Duty_D)
 {
-
-	/**
-		Dans cette fonction, la valeur des duty cycle pour chaque moteur est calculé.  
-		Ce calcul est effectué à l`aide de la vitesse désirée, de l`angle désriré ainsi 
-		que de la vitesse (mesurée avec CalculVitesses) et l`angle actuel.
+	/* Texte original */
+	/** 
+		Dans cette fonction, la valeur des duty cycle pour chaque moteur est calculÃ©.  
+		Ce calcul est effectuÃ© Ã  l`aide de la vitesse dÃ©sirÃ©e, de l`angle dÃ©srirÃ© ainsi 
+		que de la vitesse (mesurÃ©e avec CalculVitesses) et l`angle actuel.
 	*/
 	static float Angle = 0.0;
 	static float ErreurAngle = 0.0;
@@ -20,8 +37,8 @@ void CalculPWM(float Vitesse_D, float Angle_D, float Vg, float Vd, float *Duty_G
 	static int 	 Signe_Ut = 0;
 
 
-	Vg = (Vg > 1.0) ? 1.0 : ((Vg < -1.0) ? -1.0 : Vg);  /* Regarde les limites (-1.0 à 1.0) */
-	Vd = (Vd > 1.0) ? 1.0 : ((Vd < -1.0) ? -1.0 : Vd);  /* Regarde les limites (-1.0 à 1.0) */
+	Vg = (Vg > 1.0) ? 1.0 : ((Vg < -1.0) ? -1.0 : Vg);  /* Regarde les limites (-1.0 Ã  1.0) */
+	Vd = (Vd > 1.0) ? 1.0 : ((Vd < -1.0) ? -1.0 : Vd);  /* Regarde les limites (-1.0 Ã  1.0) */
 		
 	Old_W = W;
 	W     = 0.5*(Vmax/RAYON)*(Vd-Vg);
