@@ -1,3 +1,13 @@
+/*
+    Title:    main.c
+    Authors:  Mikael Ferland, Joël Brisson
+    Date:     XX/09/2015
+    Purpose:  Contains definitions to be done in all 
+    Software: AVR-GCC to compile
+    Hardware: ATMega32 on STK500 board
+    Note:     
+*/
+
 #ifndef __GLOBAL_VARS_H__
 #define __GLOBAL_VARS_H__
 
