@@ -43,7 +43,7 @@ void TWIInit()
 	putDataOutBuf(0xFE);
 	twiWrite(0xE0, 0x01, 0x0A);
 	putDataOutBuf(0xFE);
-	twiWrite(0xE0, 0x01, 0x0A);
+	twiWrite(0xE2, 0x01, 0x0A);
 	putDataOutBuf(0xFF);	//Send stop
 	
 	TWCR |= (1<<TWSTA); 	// then start the TWI
