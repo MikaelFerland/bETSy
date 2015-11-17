@@ -70,7 +70,7 @@ volatile u16 L_COUNTER_FOR_MEAN, R_COUNTER_FOR_MEAN;
 
 volatile u08 Ping_Side = 0;
 volatile u08 Ping_Sensor_MSB, Ping_Sensor_LSB;
-volatile u16 R_Ping_Sense, L_Ping_Sense;
+volatile u16 R_Ping_Sense, L_Ping_Sense, Closest_Sense;
 volatile u08 Time_To_Ping = 0;
 
 float   SPEED_REMOTE, ANGLE_REMOTE;
@@ -480,6 +480,13 @@ int main(void)
 
 				Ping_Side = 0;
 			}
+
+			//Check wich side Sense the closest obstacle
+			if(R_Ping_Sense < L_Ping_Sense)
+				Closest_Sense = R_Ping_Sense;
+			else
+				Closest_Sense = L_Ping_Sense;
+
 			Time_To_Ping = 0; // reset the Time_To_Ping value
 		}
 		
@@ -505,59 +512,71 @@ int main(void)
 				V_R_MOTOR_SENSOR_ENG = (V_R_MOTOR_SENSOR_MEAN - R_VMIN_N ) * (-R_slope_N);
 			}
 
-			CalculPWM(SPEED_SETPOINT, ANGLE_SETPOINT, V_L_MOTOR_SENSOR_ENG, V_R_MOTOR_SENSOR_ENG, &DUTY_L, &DUTY_R);
+			if((Closest_Sense <=0x00FF) && (Closest_Sense >= 0x01F))
+				CalculPWM((((float)Closest_Sense)/((float)0x00FF))*SPEED_SETPOINT, ANGLE_SETPOINT, V_L_MOTOR_SENSOR_ENG, V_R_MOTOR_SENSOR_ENG, &DUTY_L, &DUTY_R);
+			else if(Closest_Sense < 0x01F)
+				CalculPWM(0, ANGLE_SETPOINT, V_L_MOTOR_SENSOR_ENG, V_R_MOTOR_SENSOR_ENG, &DUTY_L, &DUTY_R);
+			else
+				CalculPWM(SPEED_SETPOINT, ANGLE_SETPOINT, V_L_MOTOR_SENSOR_ENG, V_R_MOTOR_SENSOR_ENG, &DUTY_L, &DUTY_R);
 			
-			robotToNeutral();
+			//robotToNeutral();
+			if((L_COUNTER_FOR_MEAN > 10) && (R_COUNTER_FOR_MEAN > 10)){
+				if (0xF1 == GetCommandRemote()){
+					if((DUTY_L > 0.0)){
+						DUTY_L_REG = (u16)(9999.0 * DUTY_L);
+					}
+					else if((DUTY_L < 0.0)){
+						DUTY_L_REG = (u16)(-1.0 * (9999.0 * DUTY_L));
+					}
+					else{
+						DUTY_L_REG = 0.0;
+					}
 
-			if (0xF1 == GetCommandRemote()){
-				if((DUTY_L > 0.0)){
-					DUTY_L_REG = (u16)(9999.0 * DUTY_L);
+
+					if((DUTY_R > 0.0)){
+						DUTY_R_REG = (u16)(9999.0 * DUTY_R);
+					}
+					else if((DUTY_R < 0.0)){
+						DUTY_R_REG = (u16)(-1.0 * (9999.0 * DUTY_R));
+					}
+					else{
+						DUTY_R_REG = 0.0;
+					}
+
+					if (DUTY_L == 0.0){
+						l_motorToNeural();
+					}
+					else{
+						if(DUTY_L > 0.0){
+							l_forward_motor();
+						}
+						else if(DUTY_L < 0.0){
+							l_reverse_motor();
+						}
+					}
+
+					if (DUTY_R == 0.0){
+						r_motorToNeural();
+					}
+					else{
+						if(DUTY_R > 0.0){
+							r_forward_motor();
+						}
+						else if(DUTY_R < 0.0){
+							r_reverse_motor();
+						}
+					}
+
+					OCR1B = DUTY_L_REG;
+					OCR1A = DUTY_R_REG;
+
+					resetMeanValue();
 				}
 				else{
-					DUTY_L_REG = (u16)(-1.0 * (9999.0 * DUTY_L));
-				}
-				if((DUTY_R > 0.0)){
-					DUTY_R_REG = (u16)(9999.0 * DUTY_R);
-				}
-				else{
-					DUTY_R_REG = (u16)(-1.0 * (9999.0 * DUTY_R));
-				}
-
-				if (DUTY_L == 0.0){
-					l_motorToNeural();
+					stopRobot();
 					OCR1B = 0;
-				}
-				else{
-					if(DUTY_L > 0.0){
-						l_forward_motor();
-					}
-					else if(DUTY_L < 0.0){
-						l_reverse_motor();
-					}
-				}
-
-				if (DUTY_R == 0.0){
-					r_motorToNeural();
 					OCR1A = 0;
 				}
-				else{
-					if(DUTY_R > 0.0){
-						r_forward_motor();
-					}
-					else if(DUTY_R < 0.0){
-						r_reverse_motor();
-					}
-				}
-
-				OCR1B = DUTY_L_REG;
-				OCR1A = DUTY_R_REG;
-
-				resetMeanValue();
-			}
-			else{
-				stopRobot();
-				OCR1B = 0;
-				OCR1A = 0;
 			}
 
 			TIME_TO_COMPUTE_PWM = 0;
