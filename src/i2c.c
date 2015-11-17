@@ -16,10 +16,24 @@ u08 *buffer_ptr;	//Address of the "buffer" variable
 // Two Wire Interface initialisation and write starting parameter to Ping Sensor
 void TWIInit()
 {
+	/*Set TWPS and TWS to 0 in the TWSR register
+		TWPS is the Prescaler of TWI
+		TWBR is the value of the TWI Bit Rate Register
+		
+		Use the following formula to calculate an SCL frequency of 10kHz
+		SCL frequency = (CPU Clock)/(16+(TWBR)*4^(TWPS))
+	*/
+	
+	//TWSR = (bits 7..3) TWS and (bits 1..0) TWPS
+	//Set prescaler to 1, clear all TWI Status
 	TWSR = 0;
+	
+	//TWBR = TWI Bit Rate
+	//Set bit rate to 0xC6
 	TWBR = 0xC6;
 
-	//Enable Interrupt
+	//TWCR = TWI Control Register
+	//Clear Interrupt Flag, Enable TWI Interrupt, Enable TWI Acknowledge Bit, Enable TWI
 	TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
 	
 	//Set some initial value to both ping sensor
@@ -126,6 +140,7 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 		case	0x10: 	/* Restart Condition */
 	
 			TWDR = getDataOutBuf();
+			//Reset TWI flag, Enable TWI, Enable TWI Acknoledge, Enable TWI Interrupt
 			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
 			TWCR |= (1<<TWINT);
 			
@@ -137,6 +152,7 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 		case	0x30: 	/* Date Write NoAck */
 			
 			buffer = getDataOutBuf();
+			//Reset TWI flag, Enable TWI, Enable TWI Acknoledge, Enable TWI Interrupt
 			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
 			
 			// if start or restart condition is read on the bus
@@ -165,6 +181,7 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 			*buffer = TWDR;			//Write the value found in "TWDR" at the address of "buffer"
 			
 			buffer = getDataOutBuf();	//Read next value in the circular buffer
+			//Reset TWI flag, Enable TWI, Enable TWI Acknoledge, Enable TWI Interrupt
 			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
 			if(buffer == 0xFF)		// 0xFF will stop TWI
 			{
@@ -184,6 +201,7 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 		/*case: Received the Acknoledge from slave to read desired value*/
 		case	0x40: /* Address Read Ack */
 
+			//Reset TWI flag, Enable TWI, Enable TWI Acknoledge, Enable TWI Interrupt
 			TWCR = (1<<TWEN) | (1<<TWIE);
 			TWCR |= (1<<TWINT);
 	
@@ -193,6 +211,7 @@ SIGNAL(SIG_2WIRE_SERIAL) {
 		case	0x48: /* Address Read NoAck */
 		case	0x20: /* Address Write NoAck */
 
+			//Reset TWI flag, Enable TWI, Enable TWI Acknoledge, Enable TWI Interrupt
 			TWCR =	(1<<TWEN) | (1<<TWSTO); //stop TWI
 			TWCR |= (1<<TWINT);
 
