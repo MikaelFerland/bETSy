@@ -30,13 +30,13 @@
 #define PI      (3.1415926535897932384626433832795)
 #define START_DEBUG 	0xFE
 #define STOP_DEBUG		0xFF
-#define SET_DIR_G1		PIND2
-#define SET_DIR_G2		PIND3
-#define SET_DIR_D1		PIND6
-#define SET_DIR_D2		PIND7
-#define GET_G_DIR_PIN	PINA2
-#define GET_D_DIR_PIN	PINA3
-#define VITESSE_TELEGUIDAGE_MAX 0xC8
+#define SET_DIR_L1		PIND2
+#define SET_DIR_L2		PIND3
+#define SET_DIR_R1		PIND6
+#define SET_DIR_R2		PIND7
+#define GET_L_DIR_PIN	PINA2
+#define GET_R_DIR_PIN	PINA3
+#define SPEED_REMOTE_MAX 0xC8
 #define CALIB_PIN		PINA4
 
 /* LED-------------------------------------------------------- */
@@ -55,7 +55,7 @@
 /*Global Variables ------------------------------------------- */
 volatile u08 TIME_TO_COMPUTE_PWM;
 volatile u08 CURRENT_CHANNEL;
-volatile u08 G_DIR_SENSOR, D_DIR_SENSOR;
+volatile u08 L_DIR_SENSOR, R_DIR_SENSOR;
 volatile u08 STAB;
 volatile u08 LED_Status = 0x00, OLD_LED_Status = 0x00, LED_Counter = 0x00;
 
@@ -73,8 +73,8 @@ volatile u08 Ping_Sensor_MSB, Ping_Sensor_LSB;
 volatile u16 R_Ping_Sense, L_Ping_Sense;
 volatile u08 Time_To_Ping = 0;
 
-float   VITESSE_TELEGUIDAGE, ANGLE_TELEGUIDAGE;
-float	VITESSE_CONSIGNE, ANGLE_CONSIGNE;
+float   SPEED_REMOTE, ANGLE_REMOTE;
+float	SPEED_SETPOINT, ANGLE_SETPOINT;
 float	V_L_MOTOR_SENSOR_ENG, V_R_MOTOR_SENSOR_ENG;
 float 	DUTY_R, DUTY_L;
 
@@ -97,34 +97,34 @@ void print(PGM_P string){
 }
 
 void l_motorToNeural(){
-	PORTD &= ~( (1 << SET_DIR_G1) | (1 << SET_DIR_G2) );
+	PORTD &= ~( (1 << SET_DIR_L1) | (1 << SET_DIR_L2) );
 }
 void r_motorToNeural(){
-	PORTD &= ~( (1 << SET_DIR_D1) | (1 << SET_DIR_D2) );
+	PORTD &= ~( (1 << SET_DIR_R1) | (1 << SET_DIR_R2) );
 }
 void robotToNeutral(){
-	PORTD &= ~( (1 << SET_DIR_G1) | (1 << SET_DIR_G2) | (1 << SET_DIR_D1) | (1 << SET_DIR_D2) );
+	PORTD &= ~( (1 << SET_DIR_L1) | (1 << SET_DIR_L2) | (1 << SET_DIR_R1) | (1 << SET_DIR_R2) );
 }
 void l_forward_motor(){
-	PORTD |=  (1 << SET_DIR_G1);
-	PORTD &= ~(1 << SET_DIR_G2);
+	PORTD |=  (1 << SET_DIR_L1);
+	PORTD &= ~(1 << SET_DIR_L2);
 }
 void r_forward_motor(){
-	PORTD |=  (1 << SET_DIR_D1);
-	PORTD &= ~(1 << SET_DIR_D2);
+	PORTD |=  (1 << SET_DIR_R1);
+	PORTD &= ~(1 << SET_DIR_R2);
 }
 void l_reverse_motor(){
-	PORTD &= ~(1 << SET_DIR_G1);
-	PORTD |=  (1 << SET_DIR_G2);
+	PORTD &= ~(1 << SET_DIR_L1);
+	PORTD |=  (1 << SET_DIR_L2);
 }
 void r_reverse_motor(){
-	PORTD &= ~(1 << SET_DIR_D1);
-	PORTD |=  (1 << SET_DIR_D2);
+	PORTD &= ~(1 << SET_DIR_R1);
+	PORTD |=  (1 << SET_DIR_R2);
 }
 void stopRobot(){
 	OCR1A = 0;
 	OCR1B = 0;
-	PORTD |= ( (1 << SET_DIR_G1) | (1 << SET_DIR_G2) | (1 << SET_DIR_D1) | (1 << SET_DIR_D2) );
+	PORTD |= ( (1 << SET_DIR_L1) | (1 << SET_DIR_L2) | (1 << SET_DIR_R1) | (1 << SET_DIR_R2) );
 }
 void delay(){
 	u16 count = 1000;
@@ -134,10 +134,8 @@ void delay(){
 
 		while(count1 != 0){
 			count1--;
-
 		}
 		count1 = 25;
-
 	}
 }
 
@@ -174,8 +172,6 @@ void calibrate(){
 	L_VMAX_P = V_L_MOTOR_SENSOR_MEAN;
 	R_VMAX_P = V_R_MOTOR_SENSOR_MEAN;
 	PORTA &= ~(1 << CALIB_PIN);
-
-	
 
 	//Vzero+ motors
 	stopRobot();
@@ -252,7 +248,6 @@ void UpdateLED()
 		PORTB = (PORTB ^ 0x20);
 	}
 
-
 	// Mask all LED that does not flash
 	// then write them to the LED PORT
 	PORTB = (0xD4 | PORTB) & ~(0xD4 & LED_Status);
@@ -285,8 +280,8 @@ SIGNAL(SIG_ADC)
 {
 	if (STAB == 0){
 		if(CURRENT_CHANNEL == 0){
-			G_DIR_SENSOR = PINA & (1 << GET_G_DIR_PIN);
-			L_SIGN = (G_DIR_SENSOR ==0) ? 1 : -1;
+			L_DIR_SENSOR = PINA & (1 << GET_L_DIR_PIN);
+			L_SIGN = (L_DIR_SENSOR ==0) ? 1 : -1;
 
 			V_L_MOTOR_SENSOR_RAW =  ADC & (0x3FF); //10 bits mask
 
@@ -300,8 +295,8 @@ SIGNAL(SIG_ADC)
 			L_COUNTER_FOR_MEAN++;
 		}
 		else{
-			D_DIR_SENSOR = PINA & (1 << GET_D_DIR_PIN);			
-			R_SIGN = (D_DIR_SENSOR ==0) ? 1 : -1;
+			R_DIR_SENSOR = PINA & (1 << GET_R_DIR_PIN);			
+			R_SIGN = (R_DIR_SENSOR ==0) ? 1 : -1;
 
 			V_R_MOTOR_SENSOR_RAW =  ADC & (0x3FF); //10 bits mask
 
@@ -403,27 +398,14 @@ int main(void)
     for (;;) {  /* loop forever */
 		if(PACKET_READY == 1){
 			wdt_reset();
+			SPEED_REMOTE = GetSpeedRemote();
+			ANGLE_REMOTE = GetAngleRemote();
 
-			VITESSE_TELEGUIDAGE = GetVitesseTeleguidage();
-			ANGLE_TELEGUIDAGE = GetAngleTeleguidage();
+			SPEED_SETPOINT = (0.01 * SPEED_REMOTE) -1.0;		
+			ANGLE_SETPOINT = (2.0 * PI) * (ANGLE_REMOTE / 180.0);
 
-			VITESSE_CONSIGNE = (0.01 * VITESSE_TELEGUIDAGE) -1.0;		
-			ANGLE_CONSIGNE	 = (2.0 * PI) * (ANGLE_TELEGUIDAGE / 180.0);
-			
-			/*//Debug*********
-			UART_DisableEcho();
-			UART_SendByte(START_DEBUG);
-			UART_PrintfProgStr("Vitesse: ");
-			UART_Printfu08((u08) VITESSE_TELEGUIDAGE);
-			UART_PrintfProgStr(" ");	
-			UART_PrintfProgStr(" Angle: ");
-			UART_Printfu08((u08) ANGLE_TELEGUIDAGE);
-			UART_PrintfProgStr(" ");					
-			UART_SendByte(STOP_DEBUG);
-			UART_EnableEcho();
-			*/	
-			
 			PACKET_READY = 0;
+			
 			//Update LED value
 			LED_Status |= 0x02;	
 		}
@@ -438,7 +420,7 @@ int main(void)
 				else
 					LED_Status &= ~(1 << LObstacle_LED);
 
-				twiWrite(0xE0, 0x02, SetSonarRange(VITESSE_CONSIGNE)); //Set Sonar Range depending on speed
+				twiWrite(0xE0, 0x02, SetSonarRange(VITESSE_SETPOINT)); //Set Sonar Range depending on speed
 				putDataOutBuf(0xFE);
 				twiRead(0xE2, 0x02, &Ping_Sensor_MSB);		//Read data from the Ping Sensor
 				putDataOutBuf(0xFE);
@@ -459,7 +441,7 @@ int main(void)
 				else
 					LED_Status &= ~(1 << RObstacle_LED);
 				
-				twiWrite(0xE2, 0x02, SetSonarRange(VITESSE_CONSIGNE)); //Set Sonar Range depending on speed
+				twiWrite(0xE2, 0x02, SetSonarRange(VITESSE_SETPOINT)); //Set Sonar Range depending on speed
 				putDataOutBuf(0xFE);
 				twiRead(0xE0, 0x02, &Ping_Sensor_MSB);		//Read data from the Ping Sensor of the other side
 				putDataOutBuf(0xFE);
@@ -494,11 +476,11 @@ int main(void)
 				V_R_MOTOR_SENSOR_ENG = (V_R_MOTOR_SENSOR_MEAN - R_VMIN_N ) * (-R_slope_N);
 			}
 
-			CalculPWM(VITESSE_CONSIGNE, ANGLE_CONSIGNE, V_L_MOTOR_SENSOR_ENG, V_R_MOTOR_SENSOR_ENG, &DUTY_L, &DUTY_R);
+			CalculPWM(SPEED_SETPOINT, ANGLE_SETPOINT, V_L_MOTOR_SENSOR_ENG, V_R_MOTOR_SENSOR_ENG, &DUTY_L, &DUTY_R);
 			
 			robotToNeutral();
 
-			if (0xF1 == GetCommandeTeleguidage()){
+			if (0xF1 == GetCommandRemote()){
 				if((DUTY_L > 0.0)){
 					DUTY_L_REG = (u16)(9999.0 * DUTY_L);
 				}
@@ -523,8 +505,6 @@ int main(void)
 					else if(DUTY_L < 0.0){
 						l_reverse_motor();
 					}
-
-
 				}
 
 				if (DUTY_R == 0.0){
@@ -538,53 +518,20 @@ int main(void)
 					else if(DUTY_R < 0.0){
 						r_reverse_motor();
 					}
-
-					
 				}
 
 				OCR1B = DUTY_L_REG;
 				OCR1A = DUTY_R_REG;
 
-				/*//Debug*********
-				UART_DisableEcho();
-				UART_SendByte(START_DEBUG);
-				UART_PrintfProgStr(" Counter: ");
-				UART_Printfu16(L_COUNTER_FOR_MEAN);
-				UART_SendByte(STOP_DEBUG);
-				UART_EnableEcho();
-				*/
-
 				resetMeanValue();
-						
 			}
-
 			else{
 				stopRobot();
 				OCR1B = 0;
 				OCR1A = 0;
 			}
 
-
-			/*UART_DisableEcho();
-			UART_SendByte(START_DEBUG);
-			UART_Printfu08(G_DIR_SENSOR);
-			UART_PrintfProgStr(" ");
-			UART_Printfu16(V_L_MOTOR_SENSOR_RAW);
-			UART_PrintfProgStr(" ");
-			UART_Printfu16(V_L_MOTOR_SENSOR_MEAN);
-			UART_PrintfProgStr(" ");
-			UART_Printfu08(D_DIR_SENSOR);
-			UART_PrintfProgStr(" ");
-			UART_Printfu16(V_R_MOTOR_SENSOR_RAW);
-			UART_PrintfProgStr(" ");
-			UART_Printfu16(V_R_MOTOR_SENSOR_MEAN);
-			UART_PrintfProgStr("DUTY_L: ");
-			UART_Printfu16(DUTY_L_REG);
-			UART_PrintfProgStr(" DUTY_R: ");
-			UART_Printfu16(DUTY_R_REG);*/
-			
-			TIME_TO_COMPUTE_PWM = 0;			
-
+			TIME_TO_COMPUTE_PWM = 0;
 		}
 
 		//if LED value has change, update LED PORT
@@ -614,6 +561,5 @@ int main(void)
 			LED_Status |= (1<<RUN_LED);	
 			LED_Status &= ~(1 << WAIT_LED);
 		}
-				
     }
 }
