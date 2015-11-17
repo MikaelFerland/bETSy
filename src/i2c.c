@@ -1,15 +1,19 @@
-/******************************************************************************
- *
- *
- *****************************************************************************/
+/*
+    Title:    i2c.c
+    Authors:  Mikael Ferland, Joël Brisson
+    Date:     12/11/2015
+    Purpose:  Initialysation, writing and reading for TWI between master and slaves, using i2c protocol.
+    Software: AVR-GCC to compile
+    Hardware: ATMega32 on STK500 board
+    Note:     0xFE and 0xFF is reserved by the system for restart and stop condition.
+*/
 
+#include "../include/i2c.h"
 
-#include "../include/i2c_caneva.h"
+u08 buffer;		//Store value temporary to execute decision base on value
+u08 *buffer_ptr;	//Address of the "buffer" variable
 
-u08 buffer;
-u08 *buffer_ptr;
-
-// Two Wire Interface
+// Two Wire Interface initialisation and write starting parameter to Ping Sensor
 void TWIInit()
 {
 	TWSR = 0;
@@ -20,20 +24,20 @@ void TWIInit()
 	
 	//Set some initial value to both ping sensor
 	twiWrite(0xE0, 0x02, 0x5A);
-	putDataOutBuf(0xFE);//Send restart
+	putDataOutBuf(0xFE);	//Send restart
 	twiWrite(0xE2, 0x02, 0x5A);
 	putDataOutBuf(0xFE);
 	twiWrite(0xE0, 0x01, 0x0A);
 	putDataOutBuf(0xFE);
 	twiWrite(0xE0, 0x01, 0x0A);
-	putDataOutBuf(0xFF);//Send stop
+	putDataOutBuf(0xFF);	//Send stop
 	
-	TWCR |= (1<<TWSTA); // then start the TWI
+	TWCR |= (1<<TWSTA); 	// then start the TWI
 }
 
 
 /******************************************************************************
- * Insérer dans le buffer out
+ * Insert in buffer out
  *****************************************************************************/
 void putDataOutBuf(u08 data){
 
@@ -45,7 +49,7 @@ void putDataOutBuf(u08 data){
 
 
 /******************************************************************************
- * Retirer du buffer out
+ * Retrieve from buffer out
  *****************************************************************************/
 u08 getDataOutBuf(void){
 
@@ -57,7 +61,7 @@ u08 getDataOutBuf(void){
 
 
 /******************************************************************************
- * Insérer dans le buffer in
+ * Insert in buffer in
  *****************************************************************************/
 void putDataInBuf(u08 * ptr){
 
@@ -69,7 +73,7 @@ void putDataInBuf(u08 * ptr){
 
 
 /******************************************************************************
- * Retirer du buffer in
+ * Retrieve from buffer in
  *****************************************************************************/
 u08 * getDataInBuf(void){
 
@@ -81,7 +85,7 @@ u08 * getDataInBuf(void){
 
 
 /******************************************************************************
- * Écrire sur le bus twi
+ * Write on TWI bus
  *****************************************************************************/
 void twiWrite(u08 address, u08 registre, u08 data){
 		
@@ -94,7 +98,7 @@ void twiWrite(u08 address, u08 registre, u08 data){
 }
 
 /******************************************************************************
- * lire sur le bus
+ * Read on TWI bus
  *****************************************************************************/
 void twiRead(u08 address, u08 registre, u08 *ptr){
 
@@ -110,106 +114,93 @@ void twiRead(u08 address, u08 registre, u08 *ptr){
 
 
 /******************************************************************************
- *
+ *Attach Interrupt signal and execute this routine
  *****************************************************************************/
 SIGNAL(SIG_2WIRE_SERIAL) {
 	
 	u08 status  = TWSR & 0xF8;
 		
 	switch (status) {
-		case	0x08: /* Start Condition */
-		case	0x10: /* Restart Condition */
-			
-			/* 
-				Si  nous avons un start ou un restart condition alors il faut envoyer l'addr 
-				qui est dans le buffer Out et Activer le bus sans start/stop 
-			*/
+		/*Case: start or restart condition */
+		case	0x08: 	/* Start Condition */
+		case	0x10: 	/* Restart Condition */
+	
 			TWDR = getDataOutBuf();
 			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
 			TWCR |= (1<<TWINT);
 			
 			break;
-
-		case	0x18: /* Address Write Ack */
-		case	0x28: /* Data Write Ack */
-		case	0x30: /* Date Write NoAck */
+		
+		/*case: write data on bus*/
+		case	0x18: 	/* Address Write Ack */
+		case	0x28: 	/* Data Write Ack */
+		case	0x30: 	/* Date Write NoAck */
 			
-			/* 
-				Si  nous avons un data ou une addr d'écrit sur le bus, ensuite il peut y avoir un autre data, 
-				un stop ou un restart. Il faut donc lire le buffer pour savoir quoi faire et configure 
-				le bus en conséquence 
-			*/
 			buffer = getDataOutBuf();
 			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
-			if(buffer = 0xFF)
+			
+			// if start or restart condition is read on the bus
+			if(buffer = 0xFF) 	// 0xFF will stop TWI
 			{
 				TWCR |= (1<<TWSTO);
 			}
-			else if(buffer == 0xFE)
+			else if(buffer == 0xFE)	// 0xFE will restart TWI 
 			{
 				TWCR |= (1<<TWSTA);
 			}
-			else
+			else			// Put the value from "buffer" on the register "TWDR"
 			{
 				TWDR = buffer;
 				TWCR |= (1<<TWINT);
 			}
 			break;
 
-		case	0x50: /* Data Read Ack */
-		case	0x58: /* Data Read NoAck */
+		/*case: Read data on the bus*/
+		case	0x50: 	/* Data Read Ack */
+		case	0x58: 	/* Data Read NoAck */
 
-			/* 
-				Une lecture à été effectué sur le bus, il faut donc la récupérer 
-			*/
-			buffer = getDataInBuf();
-
-			*buffer = TWDR;
 			
-			buffer = getDataOutBuf();
+			buffer = getDataInBuf();	//get Data from the circular buffer
+
+			*buffer = TWDR;			//Write the value found in "TWDR" at the address of "buffer"
+			
+			buffer = getDataOutBuf();	//Read next value in the circular buffer
 			TWCR = (1<<TWEN) | (1<<TWEA) | (1<<TWIE);
-			if(buffer == 0xFF)
+			if(buffer == 0xFF)		// 0xFF will stop TWI
 			{
 				TWCR |= (1<<TWSTO);
 			}
-			else if(buffer == 0xFE)
+			else if(buffer == 0xFE)		// 0xFE will restart TWI
 			{
 				TWCR |= (1<<TWSTA);
 			}
-			else
+			else				// Put the value from "buffer" on the register "TWDR"
 			{
 				TWDR = buffer;
 				TWCR |= (1<<TWINT);
 			}
-			break; // Added this break to hendel stop condition
-
+			break; 				// Added this break to hendel stop condition
+		
+		/*case: Received the Acknoledge from slave to read desired value*/
 		case	0x40: /* Address Read Ack */
 
-			/* 
-				Puisqu'il n'y a pas de break dans les deux case 0x50 et 0x58, quand nous sommes ici
-				nous avons soit lue la donnée ou envoyé l'addr à lire, il peut donc y avoir un stop, un
-				start ou encore il faut placer le bus en mode lecture 
-			*/
 			TWCR = (1<<TWEN) | (1<<TWIE);
 			TWCR |= (1<<TWINT);
 	
 			break;
-
+		
+		/*case: No response from Sensor*/
 		case	0x48: /* Address Read NoAck */
 		case	0x20: /* Address Write NoAck */
 
-			/* 
-				Ici l'un des deux sonars n'a pas répondu, il faut donc tout stoper ou faire un restart
-			    pour la prochaine trame qui peut être dans le buffer 
-			*/
-			TWCR =	(1<<TWEN) | (1<<TWSTO);
+			TWCR =	(1<<TWEN) | (1<<TWSTO); //stop TWI
 			TWCR |= (1<<TWINT);
 
 			break;
 
 		default : 
 			/*
-				Cette partie de code ne devrait pas être utile :)
+				Should not be use
 			*/
 			break;
 	}
