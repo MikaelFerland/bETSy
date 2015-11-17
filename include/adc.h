@@ -1,8 +1,8 @@
 /*
-    Title:    main.c
+    Title:    adc.c
     Authors:  Mikael Ferland, Joël Brisson
     Date:     07/10/2015
-    Purpose:  Contain function for adc
+    Purpose:  Header for adc.c
     Software: AVR-GCC to compile
     Hardware: ATMega32 on STK500 board
     Note:     
